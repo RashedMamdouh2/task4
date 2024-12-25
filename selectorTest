@@ -1,0 +1,126 @@
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QSlider, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt5.QtCore import Qt, QRect, QSize, QPoint
+from PyQt5.QtGui import QPixmap, QPainter, QColor
+import sys
+
+class ImageLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setPixmap(QPixmap("imgaes\Screen Shot 2024-11-10 at 10.27.12 AM.png"))
+        self.rect_start = None
+        self.rect_end = None
+        self.rect_dragging = False
+        self.rect_offset = QPoint(0, 0)  # Offset for dragging the rectangle
+        self.selected_rect = QRect(50, 50, 100, 100)  # Initial size of the rectangle
+        self.transparent_color = QColor(0, 0, 0, 80)  # Transparent color for the rectangle
+
+    def set_rect_size(self, size):
+        # Adjust the size of the rectangle using the slider
+        self.selected_rect.setSize(QSize(size, size))
+        self.update()  # Repaint the label to show the updated rectangle
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            # Check if the mouse is inside the rectangle
+            if self.selected_rect.contains(event.pos()):
+                self.rect_dragging = True
+                self.rect_offset = event.pos() - self.selected_rect.topLeft()
+
+    def mouseMoveEvent(self, event):
+        if self.rect_dragging:
+            # Calculate the new position of the rectangle
+            new_pos = event.pos() - self.rect_offset
+            
+            # Clamp the new position to ensure the rectangle stays within the label's boundaries
+            new_pos.setX(max(0, min(new_pos.x(), self.width() - self.selected_rect.width())))
+            new_pos.setY(max(0, min(new_pos.y(), self.height() - self.selected_rect.height())))
+            
+            # Move the rectangle
+            self.selected_rect.moveTopLeft(new_pos)
+            self.update()  # Repaint the label to show the updated rectangle
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.rect_dragging = False
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        
+        # Draw the transparent rectangle
+        painter.setPen(QColor(255, 0, 0))  # Red border color
+        painter.setBrush(self.transparent_color)  # Transparent fill
+        painter.drawRect(self.selected_rect)
+
+    def get_image_indices(self):
+        # Get the pixmap and convert it to an image to access pixel data
+        pixmap = self.pixmap()
+        image = pixmap.toImage()
+
+        # Get the rectangle area inside the image
+        left = self.selected_rect.left()
+        top = self.selected_rect.top()
+        right = self.selected_rect.right()
+        bottom = self.selected_rect.bottom()
+
+        # Ensure coordinates are inside image bounds
+        left = max(0, left)
+        top = max(0, top)
+        right = min(image.width(), right)
+        bottom = min(image.height(), bottom)
+
+        indices_inside = []
+        indices_outside = []
+
+        for y in range(image.height()):
+            for x in range(image.width()):
+                if left <= x <= right and top <= y <= bottom:
+                    indices_inside.append((x, y))
+                else:
+                    indices_outside.append((x, y))
+
+        return indices_inside, indices_outside
+
+class MainWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle('Rectangle Selector with Slider')
+
+        # Layout to hold the label and slider
+        layout = QVBoxLayout(self)
+
+        self.label = ImageLabel(self)
+        self.label.setGeometry(50, 50, 700, 500)
+        layout.addWidget(self.label)
+
+        self.label1 = ImageLabel(self)
+        self.label1.setGeometry(50, 50, 700, 500)
+        layout.addWidget(self.label1)
+
+        # Slider to adjust rectangle size
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.setRange(50, 200)  # Range of the rectangle size (e.g., from 50 to 200)
+        self.slider.setValue(self.label.selected_rect.width())  # Initialize slider with current size
+        self.slider.valueChanged.connect(self.update_rectangle_size)
+
+        layout.addWidget(self.slider)
+
+        # Button to get the indices inside and outside the rectangle
+        self.button = QPushButton('Get Indices', self)
+        self.button.clicked.connect(self.on_button_click)
+        layout.addWidget(self.button)
+
+    def update_rectangle_size(self, value):
+        self.label.set_rect_size(value)
+
+    def on_button_click(self):
+        indices_inside, indices_outside = self.label.get_image_indices()
+        print("Indices inside rectangle:", indices_inside)
+        print("Indices outside rectangle:", indices_outside)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())

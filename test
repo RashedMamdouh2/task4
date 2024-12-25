@@ -1,0 +1,43 @@
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget, QApplication
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+import sys
+# Rsize images and label test
+class ImageFitApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        # Create label and load image
+        self.label = QLabel(self)
+        pixmap = QPixmap("C:\\Users\VICTUS\Downloads\IMG_20230807_000054_971.jpg")  # Replace with your image path
+
+        # Scale the pixmap to fit the label, keeping aspect ratio
+        self.label.setPixmap(pixmap)
+        self.resize_label_and_pixmap(pixmap)
+
+        # Layout for better resizing behavior
+        layout = QVBoxLayout()
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+        self.setWindowTitle("Image Fit in UI")
+        self.show()
+
+    def resize_label_and_pixmap(self, pixmap):
+        # Set label size to fit the pixmap
+        target_width = 300  # Desired width
+        target_height = 200  # Desired height
+
+        # Scale pixmap to fit within target size while maintaining aspect ratio
+        scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.KeepAspectRatio)
+        self.label.setPixmap(scaled_pixmap)
+
+        # Resize label to match scaled pixmap
+        self.label.setFixedSize(scaled_pixmap.size())
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    ex = ImageFitApp()
+    sys.exit(app.exec_())
